@@ -14,6 +14,9 @@ import AssistentePage from "./pages/AssistentePage";
 import BibliotecaPage from "./pages/BibliotecaPage";
 import ConfigPage from "./pages/ConfigPage";
 import InstallPage from "./pages/InstallPage";
+import ClientesPage from "./pages/ClientesPage";
+import PrazosPage from "./pages/PrazosPage";
+import ModelosPage from "./pages/ModelosPage";
 import NotFound from "./pages/NotFound";
 import InstallBanner from "./components/InstallBanner";
 
@@ -36,6 +39,9 @@ const App = () => (
             <Route path="/leis" element={<ProtectedRoute><LeisPage /></ProtectedRoute>} />
             <Route path="/assistente" element={<ProtectedRoute><AssistentePage /></ProtectedRoute>} />
             <Route path="/biblioteca" element={<ProtectedRoute><BibliotecaPage /></ProtectedRoute>} />
+            <Route path="/clientes" element={<ProtectedRoute><ClientesPage /></ProtectedRoute>} />
+            <Route path="/prazos" element={<ProtectedRoute><PrazosPage /></ProtectedRoute>} />
+            <Route path="/modelos" element={<ProtectedRoute><ModelosPage /></ProtectedRoute>} />
             <Route path="/config" element={<ProtectedRoute><ConfigPage /></ProtectedRoute>} />
             <Route path="*" element={<NotFound />} />
           </Routes>
