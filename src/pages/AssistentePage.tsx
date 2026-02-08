@@ -1,32 +1,34 @@
 import { useState, useRef, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Send, Bot, User, CheckSquare, FileEdit, BookmarkPlus, Sparkles } from "lucide-react";
+import { Send, Bot, User, CheckSquare, FileEdit, BookmarkPlus, Sparkles, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import AppLayout from "@/components/AppLayout";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 type Message = {
   role: "user" | "assistant";
   content: string;
 };
 
-const initialMessages: Message[] = [
-  {
-    role: "assistant",
-    content: `Olá, Thainá! Sou sua assistente jurídica. Posso ajudá-la com:
+const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat`;
+
+export default function AssistentePage() {
+  const [messages, setMessages] = useState<Message[]>([
+    {
+      role: "assistant",
+      content: `Olá! Sou a assistente jurídica Thainá. Posso ajudá-la com:
 
 • **Consultas legais** com base em fontes oficiais
 • **Análise de casos** PF e PJ  
-• **Geração de minutas** usando seus modelos
-• **Checklists práticos** para procedimentos
+• **Geração de checklists** práticos
+• **Orientação processual**
 
 Como posso ajudar hoje?`,
-  },
-];
-
-export default function AssistentePage() {
-  const [messages, setMessages] = useState<Message[]>(initialMessages);
+    },
+  ]);
   const [input, setInput] = useState("");
-  const [isTyping, setIsTyping] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const [mode, setMode] = useState<"PF" | "PJ">("PF");
   const bottomRef = useRef<HTMLDivElement>(null);
 
@@ -34,40 +36,105 @@ export default function AssistentePage() {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  const sendMessage = () => {
-    if (!input.trim()) return;
-    const userMsg: Message = { role: "user", content: input };
+  const streamChat = async (userMessage: string) => {
+    const userMsg: Message = { role: "user", content: userMessage };
     setMessages((prev) => [...prev, userMsg]);
     setInput("");
-    setIsTyping(true);
+    setIsLoading(true);
 
-    // Simulated response
-    setTimeout(() => {
-      const response: Message = {
-        role: "assistant",
-        content: `**Resumo:**
-A questão sobre dano moral no direito do consumidor encontra amparo na legislação vigente, com indenizações que devem observar o princípio da razoabilidade.
+    let assistantContent = "";
 
-**Base Legal:**
-- [Art. 6º, VI — CDC (Lei 8.078/90)](https://www.planalto.gov.br/ccivil_03/leis/l8078compilado.htm) — prevenção e reparação de danos
-- [Art. 186 — Código Civil](https://www.planalto.gov.br/ccivil_03/leis/2002/l10406compilada.htm) — ato ilícito
-- [Art. 5º, V — CF/88](https://www.planalto.gov.br/ccivil_03/constituicao/constituicao.htm) — indenização por dano moral
+    try {
+      const response = await fetch(CHAT_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+        },
+        body: JSON.stringify({
+          messages: messages
+            .filter((m) => m.role === "user" || m.role === "assistant")
+            .concat(userMsg)
+            .map((m) => ({ role: m.role, content: m.content })),
+          mode,
+          stream: true,
+        }),
+      });
 
-**Riscos e Teses Contrárias:**
-- Réu pode alegar mero dissabor / inexistência de prova do dano
-- Necessidade de comprovação do nexo causal
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Erro ao conectar com a IA");
+      }
 
-**Checklist Prático:**
-1. Reunir provas documentais (prints, protocolos, e-mails)
-2. Verificar prescrição (5 anos — CDC)
-3. Calcular valor pretendido com base em jurisprudência local
-4. Analisar viabilidade de tutela de urgência
+      if (!response.body) {
+        throw new Error("Stream não disponível");
+      }
 
-⚠️ *A análise depende do caso concreto e da prova disponível.*`,
-      };
-      setMessages((prev) => [...prev, response]);
-      setIsTyping(false);
-    }, 1500);
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+
+      // Add empty assistant message
+      setMessages((prev) => [...prev, { role: "assistant", content: "" }]);
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+
+        // Process complete lines
+        let newlineIndex;
+        while ((newlineIndex = buffer.indexOf("\n")) !== -1) {
+          let line = buffer.slice(0, newlineIndex);
+          buffer = buffer.slice(newlineIndex + 1);
+
+          if (line.endsWith("\r")) line = line.slice(0, -1);
+          if (line.startsWith(":") || line.trim() === "") continue;
+          if (!line.startsWith("data: ")) continue;
+
+          const jsonStr = line.slice(6).trim();
+          if (jsonStr === "[DONE]") break;
+
+          try {
+            const parsed = JSON.parse(jsonStr);
+            const content = parsed.choices?.[0]?.delta?.content;
+            if (content) {
+              assistantContent += content;
+              setMessages((prev) => {
+                const updated = [...prev];
+                updated[updated.length - 1] = {
+                  role: "assistant",
+                  content: assistantContent,
+                };
+                return updated;
+              });
+            }
+          } catch {
+            // Partial JSON, put back and wait
+            buffer = line + "\n" + buffer;
+            break;
+          }
+        }
+      }
+    } catch (error) {
+      console.error("Chat error:", error);
+      toast.error(error instanceof Error ? error.message : "Erro desconhecido");
+      // Remove empty assistant message if error
+      setMessages((prev) => {
+        if (prev[prev.length - 1]?.content === "") {
+          return prev.slice(0, -1);
+        }
+        return prev;
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleSend = () => {
+    if (!input.trim() || isLoading) return;
+    streamChat(input.trim());
   };
 
   return (
@@ -121,33 +188,35 @@ A questão sobre dano moral no direito do consumidor encontra amparo na legisla�
                     : "bg-card border border-border rounded-tl-md"
                 }`}
               >
-                {msg.content}
+                {msg.content || (
+                  <div className="flex gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground animate-bounce" />
+                    <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground animate-bounce [animation-delay:0.15s]" />
+                    <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground animate-bounce [animation-delay:0.3s]" />
+                  </div>
+                )}
               </div>
             </motion.div>
           ))}
-          {isTyping && (
-            <div className="flex gap-2.5">
-              <div className="w-7 h-7 rounded-full flex items-center justify-center bg-primary/20">
-                <Bot className="h-3.5 w-3.5 text-primary" />
-              </div>
-              <div className="bg-card border border-border rounded-2xl rounded-tl-md px-4 py-3">
-                <div className="flex gap-1">
-                  <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground animate-bounce" />
-                  <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground animate-bounce [animation-delay:0.15s]" />
-                  <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground animate-bounce [animation-delay:0.3s]" />
-                </div>
-              </div>
-            </div>
-          )}
           <div ref={bottomRef} />
         </div>
 
         {/* Quick Actions */}
         <div className="px-4 pb-2 flex gap-2 overflow-x-auto no-scrollbar">
-          <Button variant="outline" size="sm" className="text-xs gap-1 shrink-0 border-border">
+          <Button
+            variant="outline"
+            size="sm"
+            className="text-xs gap-1 shrink-0 border-border"
+            onClick={() => setInput("Me dê um checklist completo para " + (mode === "PF" ? "ação de dano moral no consumidor" : "cobrança empresarial"))}
+          >
             <CheckSquare className="h-3 w-3" /> Gerar Checklist
           </Button>
-          <Button variant="outline" size="sm" className="text-xs gap-1 shrink-0 border-border">
+          <Button
+            variant="outline"
+            size="sm"
+            className="text-xs gap-1 shrink-0 border-border"
+            onClick={() => setInput("Rascunhe uma petição inicial de " + (mode === "PF" ? "indenização por dano moral" : "cobrança de título executivo"))}
+          >
             <FileEdit className="h-3 w-3" /> Rascunhar Peça
           </Button>
           <Button variant="outline" size="sm" className="text-xs gap-1 shrink-0 border-border">
@@ -164,19 +233,24 @@ A questão sobre dano moral no direito do consumidor encontra amparo na legisla�
               onKeyDown={(e) => {
                 if (e.key === "Enter" && !e.shiftKey) {
                   e.preventDefault();
-                  sendMessage();
+                  handleSend();
                 }
               }}
               placeholder="Pergunte algo..."
               rows={1}
-              className="flex-1 resize-none rounded-xl bg-secondary border border-border p-3 text-sm focus:outline-none focus:ring-1 focus:ring-primary min-h-[44px] max-h-32"
+              disabled={isLoading}
+              className="flex-1 resize-none rounded-xl bg-secondary border border-border p-3 text-sm focus:outline-none focus:ring-1 focus:ring-primary min-h-[44px] max-h-32 disabled:opacity-50"
             />
             <Button
-              onClick={sendMessage}
-              disabled={!input.trim()}
+              onClick={handleSend}
+              disabled={!input.trim() || isLoading}
               className="bg-primary text-primary-foreground hover:opacity-90 h-11 w-11 p-0"
             >
-              <Send className="h-4 w-4" />
+              {isLoading ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Send className="h-4 w-4" />
+              )}
             </Button>
           </div>
         </div>
