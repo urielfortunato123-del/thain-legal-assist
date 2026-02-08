@@ -16,34 +16,40 @@ export type Database = {
     Tables: {
       documents: {
         Row: {
+          content_text: string | null
           created_at: string
           file_path: string
           file_size: number | null
           file_type: string | null
           folder: string | null
           id: string
+          is_knowledge_base: boolean | null
           name: string
           updated_at: string
           user_id: string
         }
         Insert: {
+          content_text?: string | null
           created_at?: string
           file_path: string
           file_size?: number | null
           file_type?: string | null
           folder?: string | null
           id?: string
+          is_knowledge_base?: boolean | null
           name: string
           updated_at?: string
           user_id: string
         }
         Update: {
+          content_text?: string | null
           created_at?: string
           file_path?: string
           file_size?: number | null
           file_type?: string | null
           folder?: string | null
           id?: string
+          is_knowledge_base?: boolean | null
           name?: string
           updated_at?: string
           user_id?: string

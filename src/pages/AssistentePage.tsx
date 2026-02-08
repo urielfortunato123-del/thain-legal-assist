@@ -1,9 +1,10 @@
 import { useState, useRef, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Send, Bot, User, CheckSquare, FileEdit, BookmarkPlus, Sparkles, Loader2 } from "lucide-react";
+import { Send, Bot, User, CheckSquare, FileEdit, BookmarkPlus, Sparkles, Loader2, Database } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import AppLayout from "@/components/AppLayout";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 
 type Message = {
@@ -14,6 +15,7 @@ type Message = {
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat`;
 
 export default function AssistentePage() {
+  const { user } = useAuth();
   const [messages, setMessages] = useState<Message[]>([
     {
       role: "assistant",
@@ -23,6 +25,7 @@ export default function AssistentePage() {
 • **Análise de casos** PF e PJ  
 • **Geração de checklists** práticos
 • **Orientação processual**
+• **Pesquisa na sua base de dados** 📚
 
 Como posso ajudar hoje?`,
     },
@@ -30,11 +33,26 @@ Como posso ajudar hoje?`,
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [mode, setMode] = useState<"PF" | "PJ">("PF");
+  const [knowledgeCount, setKnowledgeCount] = useState(0);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+  // Fetch knowledge base count
+  useEffect(() => {
+    const fetchKnowledgeCount = async () => {
+      if (!user) return;
+      const { count } = await supabase
+        .from("documents")
+        .select("*", { count: "exact", head: true })
+        .eq("user_id", user.id)
+        .eq("is_knowledge_base", true);
+      setKnowledgeCount(count || 0);
+    };
+    fetchKnowledgeCount();
+  }, [user]);
 
   const streamChat = async (userMessage: string) => {
     const userMsg: Message = { role: "user", content: userMessage };
@@ -58,6 +76,7 @@ Como posso ajudar hoje?`,
             .map((m) => ({ role: m.role, content: m.content })),
           mode,
           stream: true,
+          userId: user?.id,
         }),
       });
 
@@ -145,6 +164,12 @@ Como posso ajudar hoje?`,
           <div className="flex items-center gap-2">
             <Sparkles className="h-4 w-4 text-primary" />
             <h1 className="font-serif text-lg font-semibold">Assistente IA</h1>
+            {knowledgeCount > 0 && (
+              <span className="flex items-center gap-1 text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded-full">
+                <Database className="h-3 w-3" />
+                {knowledgeCount} docs
+              </span>
+            )}
           </div>
           <div className="flex bg-secondary rounded-full p-0.5">
             {(["PF", "PJ"] as const).map((m) => (

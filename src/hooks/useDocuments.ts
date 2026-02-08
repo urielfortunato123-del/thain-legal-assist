@@ -11,6 +11,8 @@ export interface Document {
   file_size: number | null;
   folder: string | null;
   created_at: string;
+  is_knowledge_base?: boolean;
+  content_text?: string | null;
 }
 
 export function useDocuments() {
@@ -41,7 +43,35 @@ export function useDocuments() {
     fetchDocuments();
   }, [user]);
 
-  const uploadDocument = async (file: File, folder: string = "Geral") => {
+  const extractPdfContent = async (documentId: string, filePath: string) => {
+    try {
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/extract-pdf`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+          },
+          body: JSON.stringify({ documentId, filePath }),
+        }
+      );
+
+      if (!response.ok) {
+        console.error("Failed to extract PDF content");
+        return false;
+      }
+
+      const result = await response.json();
+      console.log("PDF extraction result:", result);
+      return result.success;
+    } catch (error) {
+      console.error("Extract PDF error:", error);
+      return false;
+    }
+  };
+
+  const uploadDocument = async (file: File, folder: string = "Geral", isKnowledgeBase: boolean = false) => {
     if (!user) {
       toast.error("Faça login para enviar documentos");
       return null;
@@ -77,13 +107,22 @@ export function useDocuments() {
           file_type: fileExt?.toUpperCase() || "FILE",
           file_size: file.size,
           folder,
+          is_knowledge_base: isKnowledgeBase,
         })
         .select()
         .single();
 
       if (dbError) throw dbError;
 
-      toast.success("Documento enviado com sucesso!");
+      // If it's a knowledge base document, extract text content
+      if (isKnowledgeBase && data) {
+        toast.info("Extraindo conteúdo do documento...");
+        await extractPdfContent(data.id, fileName);
+        toast.success("Documento adicionado à base de conhecimento!");
+      } else {
+        toast.success("Documento enviado com sucesso!");
+      }
+
       await fetchDocuments();
       return data;
     } catch (error: any) {
@@ -128,6 +167,10 @@ export function useDocuments() {
     return data?.signedUrl;
   };
 
+  const getKnowledgeBaseDocs = () => {
+    return documents.filter(d => d.is_knowledge_base);
+  };
+
   return {
     documents,
     loading,
@@ -135,6 +178,7 @@ export function useDocuments() {
     uploadDocument,
     deleteDocument,
     getDownloadUrl,
+    getKnowledgeBaseDocs,
     refresh: fetchDocuments,
   };
 }
