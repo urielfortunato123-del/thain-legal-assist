@@ -140,7 +140,7 @@ REGRAS OBRIGATÓRIAS:
     ];
 
     const requestBody = JSON.stringify({
-      model: "nousresearch/hermes-3-llama-3.1-405b:free",
+      model: "mistralai/mistral-small-3.1-24b-instruct:free",
       messages: fullMessages,
       stream,
     });
