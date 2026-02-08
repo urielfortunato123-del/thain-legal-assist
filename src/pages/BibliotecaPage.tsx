@@ -13,6 +13,7 @@ import {
   Database,
   Brain,
   BookOpen,
+  Eye,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -21,6 +22,7 @@ import { useDocuments, Document } from "@/hooks/useDocuments";
 import { useFolders, Folder } from "@/hooks/useFolders";
 import { useAuth } from "@/contexts/AuthContext";
 import FolderManager from "@/components/FolderManager";
+import DocumentViewer from "@/components/DocumentViewer";
 import { toast } from "sonner";
 import {
   Dialog,
@@ -59,6 +61,7 @@ export default function BibliotecaPage() {
   const [search, setSearch] = useState("");
   const [selectedFolder, setSelectedFolder] = useState<Folder | null>(null);
   const [showFolderUpload, setShowFolderUpload] = useState(false);
+  const [viewingDoc, setViewingDoc] = useState<Document | null>(null);
   const { user } = useAuth();
   const { documents, loading, uploading, uploadDocument, deleteDocument, getDownloadUrl } = useDocuments();
   const { folders, loading: foldersLoading } = useFolders();
@@ -299,7 +302,8 @@ export default function BibliotecaPage() {
                   initial={{ opacity: 0, y: 6 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: i * 0.04 }}
-                  className="flex items-center gap-3 p-3 rounded-xl bg-card border border-border hover:border-primary/30 transition-all group"
+                  onClick={() => setViewingDoc(doc)}
+                  className="flex items-center gap-3 p-3 rounded-xl bg-card border border-border hover:border-primary/30 transition-all group cursor-pointer"
                 >
                   {getFileIcon(doc.file_type)}
                   <div className="flex-1 min-w-0">
@@ -316,13 +320,19 @@ export default function BibliotecaPage() {
                   </div>
                   <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                     <button
-                      onClick={() => handleDownload(doc)}
+                      onClick={(e) => { e.stopPropagation(); setViewingDoc(doc); }}
+                      className="p-1.5 rounded-lg hover:bg-secondary text-muted-foreground hover:text-primary transition-colors"
+                    >
+                      <Eye className="h-4 w-4" />
+                    </button>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); handleDownload(doc); }}
                       className="p-1.5 rounded-lg hover:bg-secondary text-muted-foreground hover:text-primary transition-colors"
                     >
                       <Download className="h-4 w-4" />
                     </button>
                     <button
-                      onClick={() => deleteDocument(doc)}
+                      onClick={(e) => { e.stopPropagation(); deleteDocument(doc); }}
                       className="p-1.5 rounded-lg hover:bg-secondary text-muted-foreground hover:text-destructive transition-colors"
                     >
                       <Trash2 className="h-4 w-4" />
@@ -333,6 +343,13 @@ export default function BibliotecaPage() {
             </div>
           )}
         </section>
+
+        {/* Document Viewer */}
+        <DocumentViewer
+          document={viewingDoc}
+          open={!!viewingDoc}
+          onOpenChange={(open) => !open && setViewingDoc(null)}
+        />
       </div>
     </AppLayout>
   );
