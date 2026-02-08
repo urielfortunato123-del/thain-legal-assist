@@ -111,10 +111,34 @@ REGRAS OBRIGATÓRIAS:
    ${mode === "PJ" ? "e) Observações estratégicas (prazo, custo, viabilidade)" : ""}
 5. Finalize com: "A análise depende do caso concreto e da prova disponível."${knowledgeInstruction}`;
 
-    const fullMessages = [
-      { role: "system", content: systemPrompt },
-      ...messages,
-    ];
+    // Filter out assistant welcome messages and prepare messages
+    // Gemma models don't support system role, so we prepend instructions to first user message
+    const userMessages = messages.filter(m => m.role === "user" || m.role === "assistant");
+    
+    // Build messages for Gemma (no system role support)
+    const fullMessages: ChatMessage[] = [];
+    
+    // Find first user message and prepend system context
+    let addedContext = false;
+    for (const msg of userMessages) {
+      if (msg.role === "user" && !addedContext) {
+        fullMessages.push({
+          role: "user",
+          content: `[INSTRUÇÕES DO SISTEMA]\n${systemPrompt}\n\n[PERGUNTA DO USUÁRIO]\n${msg.content}`
+        });
+        addedContext = true;
+      } else {
+        fullMessages.push(msg);
+      }
+    }
+
+    // If no messages, add a placeholder
+    if (fullMessages.length === 0) {
+      fullMessages.push({
+        role: "user",
+        content: `[INSTRUÇÕES DO SISTEMA]\n${systemPrompt}\n\n[PERGUNTA DO USUÁRIO]\nOlá`
+      });
+    }
 
     const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
       method: "POST",
