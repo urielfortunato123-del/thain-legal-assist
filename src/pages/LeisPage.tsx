@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Search, ExternalLink, Filter } from "lucide-react";
+import { Search, ExternalLink, ArrowLeft } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import AppLayout from "@/components/AppLayout";
@@ -32,11 +33,20 @@ export default function LeisPage() {
   const [search, setSearch] = useState("");
   const [activeFilter, setActiveFilter] = useState("Todos");
   const [searched, setSearched] = useState(false);
+  const navigate = useNavigate();
 
   return (
     <AppLayout>
       <div className="px-4 py-5 space-y-5 max-w-2xl mx-auto">
-        <h1 className="font-serif text-2xl font-bold">Consulta de Leis</h1>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => navigate(-1)}
+            className="p-2 rounded-full bg-secondary hover:bg-muted transition-colors"
+          >
+            <ArrowLeft className="h-5 w-5 text-foreground" />
+          </button>
+          <h1 className="font-serif text-2xl font-bold">Consulta de Leis</h1>
+        </div>
 
         {/* Search */}
         <div className="flex gap-2">
