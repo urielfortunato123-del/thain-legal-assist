@@ -11,8 +11,7 @@ interface ChatMessage {
   content: string;
 }
 
-const LOVABLE_AI_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
-
+const GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:streamGenerateContent";
 
 // Function to search knowledge base
 async function searchKnowledgeBase(userId: string, query: string): Promise<string> {
@@ -59,15 +58,43 @@ async function searchKnowledgeBase(userId: string, query: string): Promise<strin
   return context;
 }
 
+// Convert OpenAI-style messages to Gemini format
+function convertToGeminiFormat(messages: ChatMessage[], systemPrompt: string) {
+  const contents = [];
+  
+  // Add system prompt as first user message context
+  let isFirstUser = true;
+  
+  for (const msg of messages) {
+    if (msg.role === "system") continue; // Skip system messages, handled separately
+    
+    const role = msg.role === "assistant" ? "model" : "user";
+    let content = msg.content;
+    
+    // Prepend system prompt to first user message
+    if (role === "user" && isFirstUser) {
+      content = `[INSTRUÇÕES DO SISTEMA]\n${systemPrompt}\n[FIM DAS INSTRUÇÕES]\n\nUsuário: ${content}`;
+      isFirstUser = false;
+    }
+    
+    contents.push({
+      role,
+      parts: [{ text: content }]
+    });
+  }
+  
+  return contents;
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) {
-      throw new Error("LOVABLE_API_KEY is not configured");
+    const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
+    if (!GEMINI_API_KEY) {
+      throw new Error("GEMINI_API_KEY is not configured");
     }
 
     const { messages, mode, stream = true, userId } = await req.json() as {
@@ -111,26 +138,30 @@ REGRAS OBRIGATÓRIAS:
    ${mode === "PJ" ? "e) Observações estratégicas (prazo, custo, viabilidade)" : ""}
 5. Finalize com: "A análise depende do caso concreto e da prova disponível."${knowledgeInstruction}`;
 
-    const fullMessages = [
-      { role: "system", content: systemPrompt },
-      ...messages.filter(m => m.role === "user" || m.role === "assistant"),
-    ];
+    const geminiContents = convertToGeminiFormat(
+      messages.filter(m => m.role === "user" || m.role === "assistant"),
+      systemPrompt
+    );
 
-    const response = await fetch(LOVABLE_AI_URL, {
+    const url = `${GEMINI_API_URL}?key=${GEMINI_API_KEY}&alt=sse`;
+    
+    const response = await fetch(url, {
       method: "POST",
       headers: {
-        "Authorization": `Bearer ${LOVABLE_API_KEY}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
-        messages: fullMessages,
-        stream,
+        contents: geminiContents,
+        generationConfig: {
+          temperature: 0.7,
+          maxOutputTokens: 4096,
+        },
       }),
     });
+
     if (!response.ok) {
       const errorText = await response.text();
-      console.error("AI gateway error:", response.status, errorText);
+      console.error("Gemini API error:", response.status, errorText);
 
       if (response.status === 429) {
         return new Response(
@@ -139,27 +170,56 @@ REGRAS OBRIGATÓRIAS:
         );
       }
 
-      if (response.status === 402) {
-        return new Response(
-          JSON.stringify({ error: "Créditos de IA esgotados. Adicione créditos e tente novamente." }),
-          { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-
       return new Response(
-        JSON.stringify({ error: `Erro na API: ${response.status}` }),
+        JSON.stringify({ error: `Erro na API Gemini: ${response.status}` }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    if (stream) {
-      return new Response(response.body, {
+    if (stream && response.body) {
+      // Transform Gemini SSE format to OpenAI-compatible format
+      const transformStream = new TransformStream({
+        transform(chunk, controller) {
+          const text = new TextDecoder().decode(chunk);
+          const lines = text.split("\n");
+          
+          for (const line of lines) {
+            if (line.startsWith("data: ")) {
+              try {
+                const data = JSON.parse(line.slice(6));
+                const content = data.candidates?.[0]?.content?.parts?.[0]?.text;
+                if (content) {
+                  // Convert to OpenAI format
+                  const openAIFormat = {
+                    choices: [{
+                      delta: { content }
+                    }]
+                  };
+                  controller.enqueue(new TextEncoder().encode(`data: ${JSON.stringify(openAIFormat)}\n\n`));
+                }
+              } catch {
+                // Skip invalid JSON
+              }
+            }
+          }
+        }
+      });
+
+      const transformedStream = response.body.pipeThrough(transformStream);
+      
+      return new Response(transformedStream, {
         headers: { ...corsHeaders, "Content-Type": "text/event-stream" },
       });
     }
 
     const data = await response.json();
-    return new Response(JSON.stringify(data), {
+    const content = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
+    
+    return new Response(JSON.stringify({
+      choices: [{
+        message: { role: "assistant", content }
+      }]
+    }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (error) {
