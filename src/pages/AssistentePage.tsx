@@ -158,25 +158,25 @@ Como posso ajudar hoje?`,
 
   return (
     <AppLayout>
-      <div className="flex flex-col h-[calc(100vh-8rem)] max-w-2xl mx-auto overflow-hidden">
+      <div className="flex flex-col h-[calc(100vh-8rem)] w-full max-w-2xl mx-auto overflow-hidden box-border">
         {/* Header */}
-        <div className="px-4 py-3 border-b border-border flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2 min-w-0 flex-1">
-            <Sparkles className="h-4 w-4 text-primary shrink-0" />
-            <h1 className="font-serif text-lg font-semibold truncate">Assistente IA</h1>
+        <div className="px-3 py-3 border-b border-border flex items-center justify-between gap-2 w-full box-border">
+          <div className="flex items-center gap-1.5 min-w-0 flex-1 overflow-hidden">
+            <Sparkles className="h-4 w-4 text-primary flex-shrink-0" />
+            <h1 className="font-serif text-base font-semibold truncate">IA</h1>
             {knowledgeCount > 0 && (
-              <span className="flex items-center gap-1 text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded-full shrink-0">
+              <span className="flex items-center gap-1 text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded-full flex-shrink-0">
                 <Database className="h-3 w-3" />
                 {knowledgeCount}
               </span>
             )}
           </div>
-          <div className="flex bg-secondary rounded-full p-0.5 shrink-0">
+          <div className="flex bg-secondary rounded-full p-0.5 flex-shrink-0">
             {(["PF", "PJ"] as const).map((m) => (
               <button
                 key={m}
                 onClick={() => setMode(m)}
-                className={`px-2.5 py-1 rounded-full text-xs font-medium transition-colors ${
+                className={`px-2 py-1 rounded-full text-xs font-medium transition-colors ${
                   mode === m ? "bg-primary text-primary-foreground" : "text-muted-foreground"
                 }`}
               >
@@ -187,7 +187,7 @@ Como posso ajudar hoje?`,
         </div>
 
         {/* Messages */}
-        <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
+        <div className="flex-1 overflow-y-auto overflow-x-hidden px-3 py-4 space-y-4 w-full box-border">
           {messages.map((msg, i) => (
             <motion.div
               key={i}
@@ -207,7 +207,7 @@ Como posso ajudar hoje?`,
                 )}
               </div>
               <div
-                className={`max-w-[85%] p-3 rounded-2xl text-sm leading-relaxed whitespace-pre-wrap ${
+                className={`max-w-[80%] p-3 rounded-2xl text-sm leading-relaxed whitespace-pre-wrap break-words ${
                   msg.role === "user"
                     ? "bg-primary text-primary-foreground rounded-tr-md"
                     : "bg-card border border-border rounded-tl-md"
@@ -227,11 +227,11 @@ Como posso ajudar hoje?`,
         </div>
 
         {/* Quick Actions */}
-        <div className="px-4 pb-2 flex gap-2 overflow-x-auto no-scrollbar">
+        <div className="px-3 pb-2 flex gap-2 overflow-x-auto w-full box-border" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
           <Button
             variant="outline"
             size="sm"
-            className="text-xs gap-1 shrink-0 border-border whitespace-nowrap"
+            className="text-xs gap-1 flex-shrink-0 border-border whitespace-nowrap"
             onClick={() => setInput("Me dê um checklist completo para " + (mode === "PF" ? "ação de dano moral no consumidor" : "cobrança empresarial"))}
           >
             <CheckSquare className="h-3 w-3" /> Checklist
@@ -239,19 +239,19 @@ Como posso ajudar hoje?`,
           <Button
             variant="outline"
             size="sm"
-            className="text-xs gap-1 shrink-0 border-border whitespace-nowrap"
+            className="text-xs gap-1 flex-shrink-0 border-border whitespace-nowrap"
             onClick={() => setInput("Rascunhe uma petição inicial de " + (mode === "PF" ? "indenização por dano moral" : "cobrança de título executivo"))}
           >
             <FileEdit className="h-3 w-3" /> Rascunho
           </Button>
-          <Button variant="outline" size="sm" className="text-xs gap-1 shrink-0 border-border whitespace-nowrap">
+          <Button variant="outline" size="sm" className="text-xs gap-1 flex-shrink-0 border-border whitespace-nowrap">
             <BookmarkPlus className="h-3 w-3" /> Salvar
           </Button>
         </div>
 
         {/* Input */}
-        <div className="px-4 pb-4 pt-2">
-          <div className="flex gap-2 items-end">
+        <div className="px-3 pb-4 pt-2 w-full box-border">
+          <div className="flex gap-2 items-end w-full">
             <textarea
               value={input}
               onChange={(e) => setInput(e.target.value)}
@@ -264,7 +264,7 @@ Como posso ajudar hoje?`,
               placeholder="Pergunte algo..."
               rows={1}
               disabled={isLoading}
-              className="flex-1 resize-none rounded-xl bg-secondary border border-border p-3 text-sm focus:outline-none focus:ring-1 focus:ring-primary min-h-[44px] max-h-32 disabled:opacity-50"
+              className="flex-1 min-w-0 resize-none rounded-xl bg-secondary border border-border p-3 text-sm focus:outline-none focus:ring-1 focus:ring-primary min-h-[44px] max-h-32 disabled:opacity-50"
             />
             <Button
               onClick={handleSend}
