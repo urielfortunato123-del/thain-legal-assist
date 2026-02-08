@@ -11,35 +11,7 @@ interface ChatMessage {
   content: string;
 }
 
-// --- Providers
-const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
 const LOVABLE_AI_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
-
-// Call OpenRouter once; if it returns 429 we can fallback to Lovable AI.
-async function callOpenRouter(body: string, openRouterApiKey: string): Promise<Response> {
-  return await fetch(OPENROUTER_URL, {
-    method: "POST",
-    headers: {
-      "Authorization": `Bearer ${openRouterApiKey}`,
-      "Content-Type": "application/json",
-      "HTTP-Referer": "https://lovable.dev",
-      "X-Title": "Thainá Jurídico",
-    },
-    body,
-  });
-}
-
-// Fallback provider (Lovable AI Gateway)
-async function callLovableAI(body: string, lovableApiKey: string): Promise<Response> {
-  return await fetch(LOVABLE_AI_URL, {
-    method: "POST",
-    headers: {
-      "Authorization": `Bearer ${lovableApiKey}`,
-      "Content-Type": "application/json",
-    },
-    body,
-  });
-}
 
 
 // Function to search knowledge base
@@ -93,9 +65,9 @@ serve(async (req) => {
   }
 
   try {
-    const OPENROUTER_API_KEY = Deno.env.get("OPENROUTER_API_KEY");
-    if (!OPENROUTER_API_KEY) {
-      throw new Error("OPENROUTER_API_KEY is not configured");
+    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+    if (!LOVABLE_API_KEY) {
+      throw new Error("LOVABLE_API_KEY is not configured");
     }
 
     const { messages, mode, stream = true, userId } = await req.json() as {
@@ -144,35 +116,21 @@ REGRAS OBRIGATÓRIAS:
       ...messages.filter(m => m.role === "user" || m.role === "assistant"),
     ];
 
-    const requestBody = JSON.stringify({
-      model: "z-ai/glm-4.5-air:free",
-      messages: fullMessages,
-      stream,
+    const response = await fetch(LOVABLE_AI_URL, {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${LOVABLE_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "google/gemini-3-flash-preview",
+        messages: fullMessages,
+        stream,
+      }),
     });
-
-    // 1) Try OpenRouter
-    let response = await callOpenRouter(requestBody, OPENROUTER_API_KEY);
-
-    // 2) If rate-limited, fallback to Lovable AI to keep the app working
-    if (response.status === 429) {
-      console.warn("OpenRouter rate-limited (429). Falling back to Lovable AI gateway.");
-
-      const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-      if (!LOVABLE_API_KEY) {
-        // Keep original behavior if fallback isn't available
-        return new Response(
-          JSON.stringify({ error: "Limite de requisições excedido. Aguarde alguns segundos e tente novamente." }),
-          { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-
-      response = await callLovableAI(requestBody, LOVABLE_API_KEY);
-    }
-
-
     if (!response.ok) {
       const errorText = await response.text();
-      console.error("AI provider error:", response.status, errorText);
+      console.error("AI gateway error:", response.status, errorText);
 
       if (response.status === 429) {
         return new Response(
@@ -181,7 +139,6 @@ REGRAS OBRIGATÓRIAS:
         );
       }
 
-      // Lovable AI can return 402 when workspace credits are exhausted
       if (response.status === 402) {
         return new Response(
           JSON.stringify({ error: "Créditos de IA esgotados. Adicione créditos e tente novamente." }),
@@ -208,14 +165,6 @@ REGRAS OBRIGATÓRIAS:
   } catch (error) {
     console.error("Chat function error:", error);
     const errorMessage = error instanceof Error ? error.message : "Unknown error";
-
-    // No retry loop anymore; 429 is handled above + fallback. Keep a safe message here.
-    if (errorMessage.includes("Rate limit")) {
-      return new Response(
-        JSON.stringify({ error: "Limite de requisições excedido. Aguarde alguns segundos e tente novamente." }),
-        { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
 
     return new Response(
       JSON.stringify({ error: errorMessage }),
