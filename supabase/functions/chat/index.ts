@@ -65,9 +65,9 @@ serve(async (req) => {
   }
 
   try {
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) {
-      throw new Error("LOVABLE_API_KEY is not configured");
+    const OPENROUTER_API_KEY = Deno.env.get("OPENROUTER_API_KEY");
+    if (!OPENROUTER_API_KEY) {
+      throw new Error("OPENROUTER_API_KEY is not configured");
     }
 
     const { messages, mode, stream = true, userId } = await req.json() as {
@@ -116,14 +116,16 @@ REGRAS OBRIGATÓRIAS:
       ...messages,
     ];
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
       method: "POST",
       headers: {
-        "Authorization": `Bearer ${LOVABLE_API_KEY}`,
+        "Authorization": `Bearer ${OPENROUTER_API_KEY}`,
         "Content-Type": "application/json",
+        "HTTP-Referer": "https://lovable.dev",
+        "X-Title": "Thainá Jurídico",
       },
       body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
+        model: "google/gemma-3n-e4b-it:free",
         messages: fullMessages,
         stream,
       }),
@@ -131,7 +133,7 @@ REGRAS OBRIGATÓRIAS:
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error("Lovable AI Gateway error:", response.status, errorText);
+      console.error("OpenRouter API error:", response.status, errorText);
       
       if (response.status === 429) {
         return new Response(
@@ -139,16 +141,9 @@ REGRAS OBRIGATÓRIAS:
           { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
-
-      if (response.status === 402) {
-        return new Response(
-          JSON.stringify({ error: "Créditos insuficientes. Adicione créditos nas configurações." }),
-          { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
       
       return new Response(
-        JSON.stringify({ error: `Erro na API de IA: ${response.status}` }),
+        JSON.stringify({ error: `Erro na API: ${response.status}` }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
