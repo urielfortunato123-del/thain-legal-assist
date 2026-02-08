@@ -145,7 +145,7 @@ REGRAS OBRIGATÓRIAS:
     ];
 
     const requestBody = JSON.stringify({
-      model: "cognitivecomputations/dolphin-mistral-24b-venice-edition:free",
+      model: "openai/gpt-5-mini",
       messages: fullMessages,
       stream,
     });
