@@ -85,23 +85,73 @@ async function fetchWithRetry(url: string, retries = 3): Promise<Response> {
   throw new Error(`Failed after ${retries} retries`);
 }
 
+// Decode HTML entities properly (including numeric entities for Portuguese chars)
+function decodeHtmlEntities(text: string): string {
+  const entities: Record<string, string> = {
+    "&nbsp;": " ",
+    "&quot;": '"',
+    "&amp;": "&",
+    "&lt;": "<",
+    "&gt;": ">",
+    "&aacute;": "á", "&Aacute;": "Á",
+    "&agrave;": "à", "&Agrave;": "À",
+    "&atilde;": "ã", "&Atilde;": "Ã",
+    "&acirc;": "â", "&Acirc;": "Â",
+    "&eacute;": "é", "&Eacute;": "É",
+    "&egrave;": "è", "&Egrave;": "È",
+    "&ecirc;": "ê", "&Ecirc;": "Ê",
+    "&iacute;": "í", "&Iacute;": "Í",
+    "&igrave;": "ì", "&Igrave;": "Ì",
+    "&oacute;": "ó", "&Oacute;": "Ó",
+    "&ograve;": "ò", "&Ograve;": "Ò",
+    "&otilde;": "õ", "&Otilde;": "Õ",
+    "&ocirc;": "ô", "&Ocirc;": "Ô",
+    "&uacute;": "ú", "&Uacute;": "Ú",
+    "&ugrave;": "ù", "&Ugrave;": "Ù",
+    "&ucirc;": "û", "&Ucirc;": "Û",
+    "&ccedil;": "ç", "&Ccedil;": "Ç",
+    "&ntilde;": "ñ", "&Ntilde;": "Ñ",
+    "&ordm;": "º", "&ordf;": "ª",
+    "&sect;": "§", "&para;": "¶",
+    "&deg;": "°", "&copy;": "©",
+    "&reg;": "®", "&trade;": "™",
+    "&ndash;": "–", "&mdash;": "—",
+    "&lsquo;": "'", "&rsquo;": "'",
+    "&ldquo;": "\u201C", "&rdquo;": "\u201D",
+    "&bull;": "•", "&hellip;": "…",
+  };
+  
+  // Replace named entities
+  let result = text;
+  for (const [entity, char] of Object.entries(entities)) {
+    result = result.replace(new RegExp(entity, "gi"), char);
+  }
+  
+  // Replace numeric entities (&#224; -> à, &#xe0; -> à)
+  result = result.replace(/&#(\d+);/g, (_, num) => String.fromCharCode(parseInt(num, 10)));
+  result = result.replace(/&#x([0-9a-f]+);/gi, (_, hex) => String.fromCharCode(parseInt(hex, 16)));
+  
+  return result;
+}
+
 async function fetchAndCleanText(url: string): Promise<string> {
   const response = await fetchWithRetry(url);
-  const html = await response.text();
+  
+  // Get raw bytes and decode as ISO-8859-1 (Latin-1) since Planalto uses this encoding
+  const buffer = await response.arrayBuffer();
+  const decoder = new TextDecoder("iso-8859-1");
+  const html = decoder.decode(buffer);
   
   // Remove HTML tags and clean up text
   let text = html
     .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, "")
     .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, "")
     .replace(/<[^>]+>/g, " ")
-    .replace(/&nbsp;/g, " ")
-    .replace(/&quot;/g, '"')
-    .replace(/&amp;/g, "&")
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/&#\d+;/g, "")
     .replace(/\s+/g, " ")
     .trim();
+  
+  // Decode HTML entities
+  text = decodeHtmlEntities(text);
   
   return text;
 }
