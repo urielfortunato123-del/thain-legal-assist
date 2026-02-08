@@ -11,7 +11,6 @@ interface ChatMessage {
   content: string;
 }
 
-const GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:streamGenerateContent";
 const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
 
 // Function to search knowledge base
@@ -59,107 +58,16 @@ async function searchKnowledgeBase(userId: string, query: string): Promise<strin
   return context;
 }
 
-// Convert OpenAI-style messages to Gemini format
-function convertToGeminiFormat(messages: ChatMessage[], systemPrompt: string) {
-  const contents = [];
-  let isFirstUser = true;
-  
-  for (const msg of messages) {
-    if (msg.role === "system") continue;
-    
-    const role = msg.role === "assistant" ? "model" : "user";
-    let content = msg.content;
-    
-    if (role === "user" && isFirstUser) {
-      content = `[INSTRUÇÕES DO SISTEMA]\n${systemPrompt}\n[FIM DAS INSTRUÇÕES]\n\nUsuário: ${content}`;
-      isFirstUser = false;
-    }
-    
-    contents.push({
-      role,
-      parts: [{ text: content }]
-    });
-  }
-  
-  return contents;
-}
-
-// Call Gemini API
-async function callGemini(geminiContents: any[], apiKey: string): Promise<Response> {
-  const url = `${GEMINI_API_URL}?key=${apiKey}&alt=sse`;
-  
-  return await fetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      contents: geminiContents,
-      generationConfig: {
-        temperature: 0.7,
-        maxOutputTokens: 4096,
-      },
-    }),
-  });
-}
-
-// Call OpenRouter with free model
-async function callOpenRouter(messages: ChatMessage[], systemPrompt: string, apiKey: string): Promise<Response> {
-  return await fetch(OPENROUTER_URL, {
-    method: "POST",
-    headers: {
-      "Authorization": `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
-      "HTTP-Referer": "https://lovable.dev",
-      "X-Title": "Thainá Jurídico",
-    },
-    body: JSON.stringify({
-      model: "arcee-ai/trinity-large-preview:free",
-      messages: [
-        { role: "system", content: systemPrompt },
-        ...messages,
-      ],
-      stream: true,
-    }),
-  });
-}
-
-// Transform Gemini SSE to OpenAI format
-function createGeminiTransformStream() {
-  return new TransformStream({
-    transform(chunk, controller) {
-      const text = new TextDecoder().decode(chunk);
-      const lines = text.split("\n");
-      
-      for (const line of lines) {
-        if (line.startsWith("data: ")) {
-          try {
-            const data = JSON.parse(line.slice(6));
-            const content = data.candidates?.[0]?.content?.parts?.[0]?.text;
-            if (content) {
-              const openAIFormat = {
-                choices: [{ delta: { content } }]
-              };
-              controller.enqueue(new TextEncoder().encode(`data: ${JSON.stringify(openAIFormat)}\n\n`));
-            }
-          } catch {
-            // Skip invalid JSON
-          }
-        }
-      }
-    }
-  });
-}
-
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
     const OPENROUTER_API_KEY = Deno.env.get("OPENROUTER_API_KEY");
     
-    if (!GEMINI_API_KEY && !OPENROUTER_API_KEY) {
-      throw new Error("No API keys configured (GEMINI_API_KEY or OPENROUTER_API_KEY)");
+    if (!OPENROUTER_API_KEY) {
+      throw new Error("OPENROUTER_API_KEY is not configured");
     }
 
     const { messages, mode, stream = true, userId } = await req.json() as {
@@ -205,34 +113,27 @@ REGRAS OBRIGATÓRIAS:
 
     const filteredMessages = messages.filter(m => m.role === "user" || m.role === "assistant");
     
-    let response: Response | null = null;
-    let useGemini = false;
-
-    // Try Gemini first if available
-    if (GEMINI_API_KEY) {
-      const geminiContents = convertToGeminiFormat(filteredMessages, systemPrompt);
-      response = await callGemini(geminiContents, GEMINI_API_KEY);
-      
-      if (response.ok) {
-        useGemini = true;
-      } else if (response.status === 429 && OPENROUTER_API_KEY) {
-        console.warn("Gemini rate-limited (429). Falling back to OpenRouter.");
-        response = null; // Will try OpenRouter
-      }
-    }
-
-    // Fallback to OpenRouter
-    if (!response && OPENROUTER_API_KEY) {
-      response = await callOpenRouter(filteredMessages, systemPrompt, OPENROUTER_API_KEY);
-    }
-
-    if (!response) {
-      throw new Error("No AI provider available");
-    }
+    const response = await fetch(OPENROUTER_URL, {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${OPENROUTER_API_KEY}`,
+        "Content-Type": "application/json",
+        "HTTP-Referer": "https://lovable.dev",
+        "X-Title": "Thainá Jurídico",
+      },
+      body: JSON.stringify({
+        model: "arcee-ai/trinity-large-preview:free",
+        messages: [
+          { role: "system", content: systemPrompt },
+          ...filteredMessages,
+        ],
+        stream: true,
+      }),
+    });
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error("AI API error:", response.status, errorText);
+      console.error("OpenRouter API error:", response.status, errorText);
 
       if (response.status === 429) {
         return new Response(
@@ -248,18 +149,9 @@ REGRAS OBRIGATÓRIAS:
     }
 
     if (stream && response.body) {
-      if (useGemini) {
-        // Transform Gemini SSE to OpenAI format
-        const transformedStream = response.body.pipeThrough(createGeminiTransformStream());
-        return new Response(transformedStream, {
-          headers: { ...corsHeaders, "Content-Type": "text/event-stream" },
-        });
-      } else {
-        // OpenRouter already uses OpenAI format
-        return new Response(response.body, {
-          headers: { ...corsHeaders, "Content-Type": "text/event-stream" },
-        });
-      }
+      return new Response(response.body, {
+        headers: { ...corsHeaders, "Content-Type": "text/event-stream" },
+      });
     }
 
     const data = await response.json();
