@@ -1,36 +1,23 @@
 import { useState, useRef } from "react";
 import { motion } from "framer-motion";
 import {
-  Folder,
   FileText,
   Upload,
   Search,
-  ChevronRight,
   File,
   Image,
   FileType,
   Trash2,
   Download,
   Loader2,
-  Database,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import AppLayout from "@/components/AppLayout";
 import { useDocuments, Document } from "@/hooks/useDocuments";
+import { useFolders } from "@/hooks/useFolders";
 import { useAuth } from "@/contexts/AuthContext";
-
-const folders = [
-  { name: "Banco de Dados", count: 0, icon: Database },
-  { name: "Clientes / PF", count: 0, icon: Folder },
-  { name: "Clientes / PJ", count: 0, icon: Folder },
-  { name: "Casos", count: 0, icon: Folder },
-  { name: "Processos", count: 0, icon: Folder },
-  { name: "Modelos", count: 0, icon: FileType },
-  { name: "Vade Mecum (Privado)", count: 0, icon: FileText },
-  { name: "Jurisprudência", count: 0, icon: FileText },
-  { name: "Financeiro", count: 0, icon: File },
-];
+import FolderManager from "@/components/FolderManager";
 
 function getFileIcon(type: string | null) {
   const t = type?.toUpperCase();
@@ -62,6 +49,7 @@ export default function BibliotecaPage() {
   const [search, setSearch] = useState("");
   const { user } = useAuth();
   const { documents, loading, uploading, uploadDocument, deleteDocument, getDownloadUrl } = useDocuments();
+  const { folders, loading: foldersLoading } = useFolders();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleUploadClick = () => {
@@ -88,6 +76,13 @@ export default function BibliotecaPage() {
   const filteredDocs = documents.filter((doc) =>
     doc.name.toLowerCase().includes(search.toLowerCase())
   );
+
+  // Count documents per folder
+  const documentCounts = documents.reduce((acc, doc) => {
+    const folder = doc.folder || "Geral";
+    acc[folder] = (acc[folder] || 0) + 1;
+    return acc;
+  }, {} as Record<string, number>);
 
   return (
     <AppLayout>
@@ -134,26 +129,13 @@ export default function BibliotecaPage() {
         </div>
 
         {/* Folders */}
-        <section>
-          <h2 className="font-serif text-lg font-semibold mb-3">Pastas</h2>
-          <div className="grid grid-cols-2 gap-2">
-            {folders.map((folder, i) => (
-              <motion.button
-                key={folder.name}
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.03 }}
-                className="flex items-center gap-2.5 p-3 rounded-xl bg-card border border-border hover:border-primary/30 transition-all text-left"
-              >
-                <folder.icon className="h-5 w-5 text-primary shrink-0" />
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs font-medium truncate">{folder.name}</p>
-                  <p className="text-[10px] text-muted-foreground">{folder.count} itens</p>
-                </div>
-              </motion.button>
-            ))}
+        {foldersLoading ? (
+          <div className="flex items-center justify-center py-8">
+            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
           </div>
-        </section>
+        ) : (
+          <FolderManager folders={folders} documentCounts={documentCounts} />
+        )}
 
         {/* Recent Documents */}
         <section>
