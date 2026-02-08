@@ -11,31 +11,36 @@ interface ChatMessage {
   content: string;
 }
 
-// Retry with exponential backoff for rate limits
-async function fetchWithRetry(
-  url: string, 
-  options: RequestInit, 
-  maxRetries = 3
-): Promise<Response> {
-  let lastError: Error | null = null;
-  
-  for (let attempt = 0; attempt < maxRetries; attempt++) {
-    const response = await fetch(url, options);
-    
-    if (response.status === 429) {
-      // Rate limited - wait and retry
-      const waitTime = Math.pow(2, attempt) * 2000; // 2s, 4s, 8s
-      console.log(`Rate limited, waiting ${waitTime}ms before retry ${attempt + 1}/${maxRetries}`);
-      await new Promise(resolve => setTimeout(resolve, waitTime));
-      lastError = new Error("Rate limit exceeded");
-      continue;
-    }
-    
-    return response;
-  }
-  
-  throw lastError || new Error("Max retries exceeded");
+// --- Providers
+const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
+const LOVABLE_AI_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
+
+// Call OpenRouter once; if it returns 429 we can fallback to Lovable AI.
+async function callOpenRouter(body: string, openRouterApiKey: string): Promise<Response> {
+  return await fetch(OPENROUTER_URL, {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${openRouterApiKey}`,
+      "Content-Type": "application/json",
+      "HTTP-Referer": "https://lovable.dev",
+      "X-Title": "Thainá Jurídico",
+    },
+    body,
+  });
 }
+
+// Fallback provider (Lovable AI Gateway)
+async function callLovableAI(body: string, lovableApiKey: string): Promise<Response> {
+  return await fetch(LOVABLE_AI_URL, {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${lovableApiKey}`,
+      "Content-Type": "application/json",
+    },
+    body,
+  });
+}
+
 
 // Function to search knowledge base
 async function searchKnowledgeBase(userId: string, query: string): Promise<string> {
@@ -145,32 +150,45 @@ REGRAS OBRIGATÓRIAS:
       stream,
     });
 
-    const response = await fetchWithRetry(
-      "https://openrouter.ai/api/v1/chat/completions",
-      {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${OPENROUTER_API_KEY}`,
-          "Content-Type": "application/json",
-          "HTTP-Referer": "https://lovable.dev",
-          "X-Title": "Thainá Jurídico",
-        },
-        body: requestBody,
-      },
-      3
-    );
+    // 1) Try OpenRouter
+    let response = await callOpenRouter(requestBody, OPENROUTER_API_KEY);
+
+    // 2) If rate-limited, fallback to Lovable AI to keep the app working
+    if (response.status === 429) {
+      console.warn("OpenRouter rate-limited (429). Falling back to Lovable AI gateway.");
+
+      const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+      if (!LOVABLE_API_KEY) {
+        // Keep original behavior if fallback isn't available
+        return new Response(
+          JSON.stringify({ error: "Limite de requisições excedido. Aguarde alguns segundos e tente novamente." }),
+          { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      response = await callLovableAI(requestBody, LOVABLE_API_KEY);
+    }
+
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error("OpenRouter API error:", response.status, errorText);
-      
+      console.error("AI provider error:", response.status, errorText);
+
       if (response.status === 429) {
         return new Response(
           JSON.stringify({ error: "Limite de requisições excedido. Aguarde alguns segundos e tente novamente." }),
           { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
-      
+
+      // Lovable AI can return 402 when workspace credits are exhausted
+      if (response.status === 402) {
+        return new Response(
+          JSON.stringify({ error: "Créditos de IA esgotados. Adicione créditos e tente novamente." }),
+          { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
       return new Response(
         JSON.stringify({ error: `Erro na API: ${response.status}` }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -190,15 +208,15 @@ REGRAS OBRIGATÓRIAS:
   } catch (error) {
     console.error("Chat function error:", error);
     const errorMessage = error instanceof Error ? error.message : "Unknown error";
-    
-    // Handle rate limit from retry exhaustion
+
+    // No retry loop anymore; 429 is handled above + fallback. Keep a safe message here.
     if (errorMessage.includes("Rate limit")) {
       return new Response(
-        JSON.stringify({ error: "Limite de requisições excedido após múltiplas tentativas. Aguarde 1 minuto." }),
+        JSON.stringify({ error: "Limite de requisições excedido. Aguarde alguns segundos e tente novamente." }),
         { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
-    
+
     return new Response(
       JSON.stringify({ error: errorMessage }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
