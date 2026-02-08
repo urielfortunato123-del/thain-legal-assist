@@ -43,7 +43,7 @@ export default function HomePage() {
       <div className="px-4 py-5 space-y-6 max-w-2xl mx-auto">
         {/* Greeting */}
         <div>
-          <h1 className="font-serif text-2xl font-bold">Bom dia, Thainá</h1>
+          <h1 className="font-serif text-2xl font-bold">Bom dia, Thainá Woichaka</h1>
           <p className="text-sm text-muted-foreground mt-1">
             {new Date().toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long" })}
           </p>

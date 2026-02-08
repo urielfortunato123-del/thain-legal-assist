@@ -17,7 +17,7 @@ export default function AssistentePage() {
   const [messages, setMessages] = useState<Message[]>([
     {
       role: "assistant",
-      content: `Olá! Sou a assistente jurídica Thainá. Posso ajudá-la com:
+      content: `Olá, Dra. Thainá Woichaka! Sou sua assistente jurídica. Posso ajudá-la com:
 
 • **Consultas legais** com base em fontes oficiais
 • **Análise de casos** PF e PJ  
