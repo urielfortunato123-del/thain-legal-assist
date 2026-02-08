@@ -2,20 +2,50 @@
 <html lang="pt-BR">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1, user-scalable=no" />
     <title>Thainá Jurídico — Assistente Pessoal</title>
     <meta name="description" content="Assistente pessoal jurídico com consulta de processos, leis e IA." />
     <meta name="author" content="Thainá Jurídico" />
+    
+    <!-- PWA Meta Tags -->
     <meta name="theme-color" content="#0f1729" />
+    <meta name="background-color" content="#0f1729" />
+    <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="Thainá" />
+    <meta name="application-name" content="Thainá Jurídico" />
+    <meta name="msapplication-TileColor" content="#0f1729" />
+    <meta name="msapplication-tap-highlight" content="no" />
+    <meta name="format-detection" content="telephone=no" />
+    
+    <!-- Icons -->
     <link rel="apple-touch-icon" href="/pwa-512.png" />
+    <link rel="apple-touch-icon" sizes="192x192" href="/pwa-192.png" />
+    <link rel="apple-touch-icon" sizes="512x512" href="/pwa-512.png" />
+    <link rel="icon" type="image/png" sizes="192x192" href="/pwa-192.png" />
+    <link rel="icon" type="image/png" sizes="512x512" href="/pwa-512.png" />
 
+    <!-- Open Graph -->
     <meta property="og:title" content="Thainá Jurídico" />
     <meta property="og:description" content="Assistente pessoal jurídico" />
     <meta property="og:type" content="website" />
     <meta property="og:image" content="/pwa-512.png" />
+    
+    <!-- Splash screens for iOS -->
+    <style>
+      /* Prevent pull-to-refresh on iOS */
+      html, body {
+        overscroll-behavior-y: none;
+      }
+      /* Safe area padding */
+      .safe-area-bottom {
+        padding-bottom: env(safe-area-inset-bottom, 0);
+      }
+      .safe-area-top {
+        padding-top: env(safe-area-inset-top, 0);
+      }
+    </style>
   </head>
 
   <body>

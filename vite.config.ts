@@ -18,16 +18,39 @@ export default defineConfig(({ mode }) => ({
     mode === "development" && componentTagger(),
     VitePWA({
       registerType: "autoUpdate",
-      includeAssets: ["favicon.ico"],
+      includeAssets: ["favicon.ico", "pwa-192.png", "pwa-512.png"],
+      workbox: {
+        globPatterns: ["**/*.{js,css,html,ico,png,svg,woff,woff2}"],
+        runtimeCaching: [
+          {
+            urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
+            handler: "CacheFirst",
+            options: {
+              cacheName: "google-fonts-cache",
+              expiration: { maxEntries: 10, maxAgeSeconds: 60 * 60 * 24 * 365 },
+            },
+          },
+          {
+            urlPattern: /^https:\/\/fonts\.gstatic\.com\/.*/i,
+            handler: "CacheFirst",
+            options: {
+              cacheName: "gstatic-fonts-cache",
+              expiration: { maxEntries: 10, maxAgeSeconds: 60 * 60 * 24 * 365 },
+            },
+          },
+        ],
+      },
       manifest: {
-        name: "Thainá Jurídico",
+        name: "Thainá Jurídico — Assistente Pessoal",
         short_name: "Thainá",
-        description: "Assistente pessoal jurídico",
+        description: "Assistente pessoal jurídico para advogados",
         theme_color: "#0f1729",
         background_color: "#0f1729",
         display: "standalone",
-        orientation: "portrait",
+        orientation: "any",
+        scope: "/",
         start_url: "/",
+        categories: ["productivity", "business"],
         icons: [
           {
             src: "/pwa-192.png",
@@ -38,7 +61,26 @@ export default defineConfig(({ mode }) => ({
             src: "/pwa-512.png",
             sizes: "512x512",
             type: "image/png",
-            purpose: "any maskable",
+          },
+          {
+            src: "/pwa-512.png",
+            sizes: "512x512",
+            type: "image/png",
+            purpose: "maskable",
+          },
+        ],
+        screenshots: [
+          {
+            src: "/pwa-512.png",
+            sizes: "512x512",
+            type: "image/png",
+            form_factor: "narrow",
+          },
+          {
+            src: "/pwa-512.png",
+            sizes: "512x512",
+            type: "image/png",
+            form_factor: "wide",
           },
         ],
       },

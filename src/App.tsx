@@ -11,7 +11,9 @@ import LeisPage from "./pages/LeisPage";
 import AssistentePage from "./pages/AssistentePage";
 import BibliotecaPage from "./pages/BibliotecaPage";
 import ConfigPage from "./pages/ConfigPage";
+import InstallPage from "./pages/InstallPage";
 import NotFound from "./pages/NotFound";
+import InstallBanner from "./components/InstallBanner";
 
 const queryClient = new QueryClient();
 
@@ -24,6 +26,7 @@ const App = () => (
         <Routes>
           <Route path="/" element={<Navigate to="/login" replace />} />
           <Route path="/login" element={<LoginPage />} />
+          <Route path="/install" element={<InstallPage />} />
           <Route path="/home" element={<HomePage />} />
           <Route path="/processos" element={<ProcessosPage />} />
           <Route path="/processo/:id" element={<ProcessoDetailPage />} />
@@ -33,6 +36,7 @@ const App = () => (
           <Route path="/config" element={<ConfigPage />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
+        <InstallBanner />
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
