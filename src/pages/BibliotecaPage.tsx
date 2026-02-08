@@ -27,9 +27,6 @@ const folders = [
 
 const recentDocs = [
   { name: "Procuração - Maria Silva.pdf", type: "PDF", date: "05/02/2026", size: "245 KB" },
-  { name: "Contrato Honorários - ABC Ltda.docx", type: "DOCX", date: "03/02/2026", size: "128 KB" },
-  { name: "Petição Inicial - Consumidor.pdf", type: "PDF", date: "01/02/2026", size: "512 KB" },
-  { name: "RG - João Santos.jpg", type: "IMG", date: "30/01/2026", size: "1.2 MB" },
 ];
 
 function getFileIcon(type: string) {
