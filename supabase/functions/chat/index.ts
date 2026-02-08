@@ -122,7 +122,7 @@ REGRAS OBRIGATÓRIAS:
         "X-Title": "Thainá Jurídico",
       },
       body: JSON.stringify({
-        model: "meta-llama/llama-3.3-70b-instruct:free",
+        model: "nousresearch/hermes-3-llama-3.1-405b:free",
         messages: fullMessages,
         stream,
       }),
