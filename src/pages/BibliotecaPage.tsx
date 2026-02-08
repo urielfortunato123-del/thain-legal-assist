@@ -12,6 +12,7 @@ import {
   Trash2,
   Download,
   Loader2,
+  Database,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -20,6 +21,7 @@ import { useDocuments, Document } from "@/hooks/useDocuments";
 import { useAuth } from "@/contexts/AuthContext";
 
 const folders = [
+  { name: "Banco de Dados", count: 0, icon: Database },
   { name: "Clientes / PF", count: 0, icon: Folder },
   { name: "Clientes / PJ", count: 0, icon: Folder },
   { name: "Casos", count: 0, icon: Folder },
