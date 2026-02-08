@@ -9,6 +9,9 @@ import {
   FolderOpen,
   Settings,
   LogOut,
+  Users,
+  Calendar,
+  FileText,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
@@ -16,9 +19,12 @@ import { toast } from "sonner";
 const navItems = [
   { path: "/home", icon: Home, label: "Início" },
   { path: "/processos", icon: Scale, label: "Processos" },
+  { path: "/clientes", icon: Users, label: "Clientes" },
+  { path: "/prazos", icon: Calendar, label: "Prazos" },
   { path: "/leis", icon: BookOpen, label: "Leis" },
   { path: "/assistente", icon: MessageSquare, label: "Assistente" },
   { path: "/biblioteca", icon: FolderOpen, label: "Biblioteca" },
+  { path: "/modelos", icon: FileText, label: "Modelos" },
   { path: "/config", icon: Settings, label: "Configurações" },
 ];
 

@@ -14,6 +14,218 @@ export type Database = {
   }
   public: {
     Tables: {
+      cases: {
+        Row: {
+          area: string | null
+          case_number: string | null
+          client_id: string | null
+          closed_at: string | null
+          created_at: string
+          description: string | null
+          id: string
+          opened_at: string | null
+          status: string | null
+          title: string
+          updated_at: string
+          user_id: string
+          value: number | null
+        }
+        Insert: {
+          area?: string | null
+          case_number?: string | null
+          client_id?: string | null
+          closed_at?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          opened_at?: string | null
+          status?: string | null
+          title: string
+          updated_at?: string
+          user_id: string
+          value?: number | null
+        }
+        Update: {
+          area?: string | null
+          case_number?: string | null
+          client_id?: string | null
+          closed_at?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          opened_at?: string | null
+          status?: string | null
+          title?: string
+          updated_at?: string
+          user_id?: string
+          value?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cases_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      clients: {
+        Row: {
+          address: string | null
+          city: string | null
+          created_at: string
+          document_number: string | null
+          email: string | null
+          id: string
+          name: string
+          notes: string | null
+          phone: string | null
+          state: string | null
+          type: Database["public"]["Enums"]["client_type"]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          address?: string | null
+          city?: string | null
+          created_at?: string
+          document_number?: string | null
+          email?: string | null
+          id?: string
+          name: string
+          notes?: string | null
+          phone?: string | null
+          state?: string | null
+          type?: Database["public"]["Enums"]["client_type"]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          address?: string | null
+          city?: string | null
+          created_at?: string
+          document_number?: string | null
+          email?: string | null
+          id?: string
+          name?: string
+          notes?: string | null
+          phone?: string | null
+          state?: string | null
+          type?: Database["public"]["Enums"]["client_type"]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      deadlines: {
+        Row: {
+          case_id: string | null
+          completed_at: string | null
+          created_at: string
+          deadline_date: string
+          deadline_time: string | null
+          description: string | null
+          id: string
+          notified: boolean | null
+          priority: string | null
+          process_id: string | null
+          reminder_days: number | null
+          status: string | null
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          case_id?: string | null
+          completed_at?: string | null
+          created_at?: string
+          deadline_date: string
+          deadline_time?: string | null
+          description?: string | null
+          id?: string
+          notified?: boolean | null
+          priority?: string | null
+          process_id?: string | null
+          reminder_days?: number | null
+          status?: string | null
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          case_id?: string | null
+          completed_at?: string | null
+          created_at?: string
+          deadline_date?: string
+          deadline_time?: string | null
+          description?: string | null
+          id?: string
+          notified?: boolean | null
+          priority?: string | null
+          process_id?: string | null
+          reminder_days?: number | null
+          status?: string | null
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "deadlines_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "cases"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "deadlines_process_id_fkey"
+            columns: ["process_id"]
+            isOneToOne: false
+            referencedRelation: "processes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      document_templates: {
+        Row: {
+          category: string | null
+          content: string
+          created_at: string
+          description: string | null
+          id: string
+          is_default: boolean | null
+          name: string
+          updated_at: string
+          user_id: string
+          variables: Json | null
+        }
+        Insert: {
+          category?: string | null
+          content: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_default?: boolean | null
+          name: string
+          updated_at?: string
+          user_id: string
+          variables?: Json | null
+        }
+        Update: {
+          category?: string | null
+          content?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_default?: boolean | null
+          name?: string
+          updated_at?: string
+          user_id?: string
+          variables?: Json | null
+        }
+        Relationships: []
+      }
       documents: {
         Row: {
           content_text: string | null
@@ -83,6 +295,68 @@ export type Database = {
         }
         Relationships: []
       }
+      processes: {
+        Row: {
+          case_id: string | null
+          cnj: string
+          court: string | null
+          created_at: string
+          distribution_date: string | null
+          id: string
+          is_favorite: boolean | null
+          judge: string | null
+          last_movement: string | null
+          last_movement_date: string | null
+          notes: string | null
+          status: string | null
+          subject: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          case_id?: string | null
+          cnj: string
+          court?: string | null
+          created_at?: string
+          distribution_date?: string | null
+          id?: string
+          is_favorite?: boolean | null
+          judge?: string | null
+          last_movement?: string | null
+          last_movement_date?: string | null
+          notes?: string | null
+          status?: string | null
+          subject?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          case_id?: string | null
+          cnj?: string
+          court?: string | null
+          created_at?: string
+          distribution_date?: string | null
+          id?: string
+          is_favorite?: boolean | null
+          judge?: string | null
+          last_movement?: string | null
+          last_movement_date?: string | null
+          notes?: string | null
+          status?: string | null
+          subject?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "processes_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "cases"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           city: string | null
@@ -127,7 +401,7 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      client_type: "pessoa_fisica" | "pessoa_juridica"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -254,6 +528,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      client_type: ["pessoa_fisica", "pessoa_juridica"],
+    },
   },
 } as const
