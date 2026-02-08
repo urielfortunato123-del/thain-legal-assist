@@ -37,8 +37,32 @@ const LEGISLATIONS = [
   },
 ];
 
+async function fetchWithRetry(url: string, retries = 3): Promise<Response> {
+  const headers = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+    "Accept-Language": "pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7",
+    "Cache-Control": "no-cache",
+  };
+
+  for (let i = 0; i < retries; i++) {
+    try {
+      // Add delay between retries
+      if (i > 0) {
+        await new Promise(resolve => setTimeout(resolve, 2000 * i));
+      }
+      const response = await fetch(url, { headers });
+      if (response.ok) return response;
+    } catch (error) {
+      console.log(`Attempt ${i + 1} failed for ${url}`);
+      if (i === retries - 1) throw error;
+    }
+  }
+  throw new Error(`Failed after ${retries} retries`);
+}
+
 async function fetchAndCleanText(url: string): Promise<string> {
-  const response = await fetch(url);
+  const response = await fetchWithRetry(url);
   const html = await response.text();
   
   // Remove HTML tags and clean up text
