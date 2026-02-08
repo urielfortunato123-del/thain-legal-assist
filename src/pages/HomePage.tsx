@@ -25,8 +25,6 @@ const quickActions = [
 
 const favoriteProcesses = [
   { cnj: "5001234-56.2024.8.16.0014", title: "Silva vs. Empresa ABC", status: "Em andamento", court: "TJPR" },
-  { cnj: "5009876-12.2023.8.16.0001", title: "Inventário - Família Santos", status: "Aguardando", court: "TJPR" },
-  { cnj: "5005555-33.2024.8.16.0014", title: "Trabalhista - Maria Oliveira", status: "Concluso", court: "TRT9" },
 ];
 
 const todayAlerts = [
