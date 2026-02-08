@@ -10,6 +10,8 @@ import {
   Settings,
   LogOut,
 } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
+import { toast } from "sonner";
 
 const navItems = [
   { path: "/home", icon: Home, label: "Início" },
@@ -23,9 +25,16 @@ const navItems = [
 export default function AppLayout({ children }: { children: ReactNode }) {
   const { pathname } = useLocation();
   const navigate = useNavigate();
+  const { signOut, user } = useAuth();
 
-  const handleLogout = () => {
-    navigate("/login");
+  const handleLogout = async () => {
+    try {
+      await signOut();
+      toast.success("Logout realizado");
+      navigate("/login");
+    } catch (error) {
+      toast.error("Erro ao sair");
+    }
   };
 
   return (
@@ -62,6 +71,11 @@ export default function AppLayout({ children }: { children: ReactNode }) {
         </nav>
 
         <div className="p-4 border-t border-border">
+          {user && (
+            <div className="px-3 py-2 mb-2">
+              <p className="text-xs text-muted-foreground truncate">{user.email}</p>
+            </div>
+          )}
           <button
             onClick={handleLogout}
             className="flex items-center gap-3 px-3 py-2.5 w-full rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
