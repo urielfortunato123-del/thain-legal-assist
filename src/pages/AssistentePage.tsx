@@ -231,21 +231,21 @@ Como posso ajudar hoje?`,
           <Button
             variant="outline"
             size="sm"
-            className="text-xs gap-1 shrink-0 border-border"
+            className="text-xs gap-1 shrink-0 border-border whitespace-nowrap"
             onClick={() => setInput("Me dê um checklist completo para " + (mode === "PF" ? "ação de dano moral no consumidor" : "cobrança empresarial"))}
           >
-            <CheckSquare className="h-3 w-3" /> Gerar Checklist
+            <CheckSquare className="h-3 w-3" /> Checklist
           </Button>
           <Button
             variant="outline"
             size="sm"
-            className="text-xs gap-1 shrink-0 border-border"
+            className="text-xs gap-1 shrink-0 border-border whitespace-nowrap"
             onClick={() => setInput("Rascunhe uma petição inicial de " + (mode === "PF" ? "indenização por dano moral" : "cobrança de título executivo"))}
           >
-            <FileEdit className="h-3 w-3" /> Rascunhar Peça
+            <FileEdit className="h-3 w-3" /> Rascunho
           </Button>
-          <Button variant="outline" size="sm" className="text-xs gap-1 shrink-0 border-border">
-            <BookmarkPlus className="h-3 w-3" /> Salvar como Nota
+          <Button variant="outline" size="sm" className="text-xs gap-1 shrink-0 border-border whitespace-nowrap">
+            <BookmarkPlus className="h-3 w-3" /> Salvar
           </Button>
         </div>
 

@@ -44,7 +44,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   };
 
   return (
-    <div className="min-h-screen flex">
+    <div className="min-h-screen flex w-full overflow-x-hidden">
       {/* Desktop Sidebar */}
       <aside className="hidden lg:flex flex-col w-64 bg-card border-r border-border">
         <div className="p-4 border-b border-border">
@@ -96,7 +96,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
       </aside>
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col min-h-screen">
+      <div className="flex-1 flex flex-col min-h-screen w-full overflow-x-hidden">
         {/* Mobile Header */}
         <header className="lg:hidden sticky top-0 z-50 glass-card border-b px-4 py-3 flex items-center justify-between">
           <Link to="/home" className="flex items-center gap-2">
