@@ -17,7 +17,6 @@ async function searchKnowledgeBase(userId: string, query: string): Promise<strin
   const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
   const supabase = createClient(supabaseUrl, supabaseKey);
 
-  // Get all knowledge base documents for this user
   const { data: docs, error } = await supabase
     .from("documents")
     .select("name, content_text")
@@ -29,7 +28,6 @@ async function searchKnowledgeBase(userId: string, query: string): Promise<strin
     return "";
   }
 
-  // Simple keyword search - find relevant documents
   const queryWords = query.toLowerCase().split(/\s+/).filter(w => w.length > 3);
   
   const relevantDocs = docs
@@ -42,13 +40,12 @@ async function searchKnowledgeBase(userId: string, query: string): Promise<strin
     })
     .filter(doc => doc.score > 0)
     .sort((a, b) => b.score - a.score)
-    .slice(0, 3); // Top 3 most relevant
+    .slice(0, 3);
 
   if (relevantDocs.length === 0) {
     return "";
   }
 
-  // Build context from relevant documents
   let context = "\n\n---\n📚 DOCUMENTOS DA BASE DE CONHECIMENTO:\n";
   for (const doc of relevantDocs) {
     const excerpt = (doc.content_text || "").slice(0, 3000);
@@ -111,34 +108,10 @@ REGRAS OBRIGATÓRIAS:
    ${mode === "PJ" ? "e) Observações estratégicas (prazo, custo, viabilidade)" : ""}
 5. Finalize com: "A análise depende do caso concreto e da prova disponível."${knowledgeInstruction}`;
 
-    // Filter out assistant welcome messages and prepare messages
-    // Gemma models don't support system role, so we prepend instructions to first user message
-    const userMessages = messages.filter(m => m.role === "user" || m.role === "assistant");
-    
-    // Build messages for Gemma (no system role support)
-    const fullMessages: ChatMessage[] = [];
-    
-    // Find first user message and prepend system context
-    let addedContext = false;
-    for (const msg of userMessages) {
-      if (msg.role === "user" && !addedContext) {
-        fullMessages.push({
-          role: "user",
-          content: `[INSTRUÇÕES DO SISTEMA]\n${systemPrompt}\n\n[PERGUNTA DO USUÁRIO]\n${msg.content}`
-        });
-        addedContext = true;
-      } else {
-        fullMessages.push(msg);
-      }
-    }
-
-    // If no messages, add a placeholder
-    if (fullMessages.length === 0) {
-      fullMessages.push({
-        role: "user",
-        content: `[INSTRUÇÕES DO SISTEMA]\n${systemPrompt}\n\n[PERGUNTA DO USUÁRIO]\nOlá`
-      });
-    }
+    const fullMessages = [
+      { role: "system", content: systemPrompt },
+      ...messages.filter(m => m.role === "user" || m.role === "assistant"),
+    ];
 
     const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
       method: "POST",
@@ -149,7 +122,7 @@ REGRAS OBRIGATÓRIAS:
         "X-Title": "Thainá Jurídico",
       },
       body: JSON.stringify({
-        model: "google/gemma-3n-e4b-it:free",
+        model: "meta-llama/llama-3.3-70b-instruct:free",
         messages: fullMessages,
         stream,
       }),
