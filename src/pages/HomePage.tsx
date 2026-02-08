@@ -28,9 +28,7 @@ const favoriteProcesses = [
 ];
 
 const todayAlerts = [
-  { type: "movement", text: "Nova movimentação: Silva vs. Empresa ABC", time: "14:32" },
-  { type: "deadline", text: "Prazo: contestação Família Santos — 3 dias", time: "Vence 11/02" },
-  { type: "movement", text: "Despacho publicado: Trabalhista Maria Oliveira", time: "09:15" },
+  { type: "deadline", text: "Prazo: contestação Silva vs. Empresa ABC — 3 dias", time: "Vence 11/02" },
 ];
 
 export default function HomePage() {
