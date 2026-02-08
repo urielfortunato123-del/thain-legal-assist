@@ -145,7 +145,7 @@ REGRAS OBRIGATÓRIAS:
     ];
 
     const requestBody = JSON.stringify({
-      model: "mistralai/mistral-small-3.1-24b-instruct:free",
+      model: "cognitivecomputations/dolphin-mistral-24b-venice-edition:free",
       messages: fullMessages,
       stream,
     });
