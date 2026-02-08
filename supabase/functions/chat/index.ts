@@ -101,7 +101,7 @@ async function callGemini(geminiContents: any[], apiKey: string): Promise<Respon
   });
 }
 
-// Call OpenRouter as fallback
+// Call OpenRouter with free model
 async function callOpenRouter(messages: ChatMessage[], systemPrompt: string, apiKey: string): Promise<Response> {
   return await fetch(OPENROUTER_URL, {
     method: "POST",
@@ -112,7 +112,7 @@ async function callOpenRouter(messages: ChatMessage[], systemPrompt: string, api
       "X-Title": "Thainá Jurídico",
     },
     body: JSON.stringify({
-      model: "google/gemini-2.0-flash-exp:free",
+      model: "arcee-ai/trinity-large-preview:free",
       messages: [
         { role: "system", content: systemPrompt },
         ...messages,
