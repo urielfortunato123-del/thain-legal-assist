@@ -35,6 +35,30 @@ const LEGISLATIONS = [
     name: "Código de Defesa do Consumidor - Lei 8.078/1990",
     url: "https://www.planalto.gov.br/ccivil_03/leis/l8078compilado.htm",
   },
+  {
+    name: "ECA - Estatuto da Criança e do Adolescente - Lei 8.069/1990",
+    url: "https://www.planalto.gov.br/ccivil_03/leis/l8069.htm",
+  },
+  {
+    name: "Lei Maria da Penha - Lei 11.340/2006",
+    url: "https://www.planalto.gov.br/ccivil_03/_ato2004-2006/2006/lei/l11340.htm",
+  },
+  {
+    name: "Estatuto do Idoso - Lei 10.741/2003",
+    url: "https://www.planalto.gov.br/ccivil_03/leis/2003/l10.741.htm",
+  },
+  {
+    name: "Lei de Execução Penal - Lei 7.210/1984",
+    url: "https://www.planalto.gov.br/ccivil_03/leis/l7210.htm",
+  },
+  {
+    name: "Lei de Drogas - Lei 11.343/2006",
+    url: "https://www.planalto.gov.br/ccivil_03/_ato2004-2006/2006/lei/l11343.htm",
+  },
+  {
+    name: "Lei de Licitações - Lei 14.133/2021",
+    url: "https://www.planalto.gov.br/ccivil_03/_ato2019-2022/2021/lei/l14133.htm",
+  },
 ];
 
 async function fetchWithRetry(url: string, retries = 3): Promise<Response> {
