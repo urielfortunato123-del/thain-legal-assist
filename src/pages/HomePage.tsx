@@ -31,15 +31,23 @@ const todayAlerts = [
   { type: "deadline", text: "Prazo: contestação Silva vs. Empresa ABC — 3 dias", time: "Vence 11/02" },
 ];
 
+function getGreeting(): string {
+  const hour = new Date().getHours();
+  if (hour >= 5 && hour < 12) return "Bom dia";
+  if (hour >= 12 && hour < 18) return "Boa tarde";
+  return "Boa noite";
+}
+
 export default function HomePage() {
   const [search, setSearch] = useState("");
+  const greeting = getGreeting();
 
   return (
     <AppLayout>
       <div className="px-4 py-5 space-y-6 max-w-2xl mx-auto">
         {/* Greeting */}
         <div>
-          <h1 className="font-serif text-2xl font-bold">Bom dia, Thainá Woichaka</h1>
+          <h1 className="font-serif text-2xl font-bold">{greeting}, Thainá Woichaka</h1>
           <p className="text-sm text-muted-foreground mt-1">
             {new Date().toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long" })}
           </p>
