@@ -145,7 +145,7 @@ REGRAS OBRIGATÓRIAS:
     ];
 
     const requestBody = JSON.stringify({
-      model: "openai/gpt-5-mini",
+      model: "z-ai/glm-4.5-air:free",
       messages: fullMessages,
       stream,
     });
