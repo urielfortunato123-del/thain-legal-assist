@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -9,6 +10,54 @@ interface ChatMessage {
   role: "user" | "assistant" | "system";
   content: string;
   reasoning_details?: unknown;
+}
+
+// Function to search knowledge base
+async function searchKnowledgeBase(userId: string, query: string): Promise<string> {
+  const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+  const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+  const supabase = createClient(supabaseUrl, supabaseKey);
+
+  // Get all knowledge base documents for this user
+  const { data: docs, error } = await supabase
+    .from("documents")
+    .select("name, content_text")
+    .eq("user_id", userId)
+    .eq("is_knowledge_base", true)
+    .not("content_text", "is", null);
+
+  if (error || !docs || docs.length === 0) {
+    return "";
+  }
+
+  // Simple keyword search - find relevant documents
+  const queryWords = query.toLowerCase().split(/\s+/).filter(w => w.length > 3);
+  
+  const relevantDocs = docs
+    .map(doc => {
+      const content = (doc.content_text || "").toLowerCase();
+      const score = queryWords.reduce((acc, word) => {
+        return acc + (content.includes(word) ? 1 : 0);
+      }, 0);
+      return { ...doc, score };
+    })
+    .filter(doc => doc.score > 0)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 3); // Top 3 most relevant
+
+  if (relevantDocs.length === 0) {
+    return "";
+  }
+
+  // Build context from relevant documents
+  let context = "\n\n---\n📚 DOCUMENTOS DA BASE DE CONHECIMENTO:\n";
+  for (const doc of relevantDocs) {
+    const excerpt = (doc.content_text || "").slice(0, 3000);
+    context += `\n[${doc.name}]:\n${excerpt}\n`;
+  }
+  context += "\n---\n";
+
+  return context;
 }
 
 serve(async (req) => {
@@ -22,41 +71,46 @@ serve(async (req) => {
       throw new Error("OPENROUTER_API_KEY is not configured");
     }
 
-    const { messages, mode, stream = true } = await req.json() as {
+    const { messages, mode, stream = true, userId } = await req.json() as {
       messages: ChatMessage[];
       mode: "PF" | "PJ";
       stream?: boolean;
+      userId?: string;
     };
 
+    // Search knowledge base if userId is provided
+    let knowledgeContext = "";
+    if (userId) {
+      const lastUserMessage = messages.filter(m => m.role === "user").pop();
+      if (lastUserMessage) {
+        knowledgeContext = await searchKnowledgeBase(userId, lastUserMessage.content);
+      }
+    }
+
     // System prompt for legal assistant
-    const systemPrompt = mode === "PJ"
+    const basePrompt = mode === "PJ"
       ? `Você é a assistente jurídica da Dra. Thainá Woichaka, especializada em direito empresarial (PJ).
-Estilo: técnico, objetivo, foco em risco jurídico, compliance e estratégia.
-
-REGRAS OBRIGATÓRIAS:
-1. SEMPRE cite a fonte oficial (Planalto, LexML, TJPR, CNJ) com link quando aplicável
-2. Se não encontrar fonte confiável, diga explicitamente "não encontrei fonte oficial"
-3. NUNCA invente artigos ou leis
-4. Estrutura de resposta:
-   a) Resumo técnico (até 8 linhas)
-   b) Base legal: artigos/leis com links oficiais
-   c) Riscos e teses contrárias
-   d) Checklist prático de compliance/documentos
-   e) Observações estratégicas (prazo, custo, viabilidade)
-5. Finalize com: "A análise depende do caso concreto e da prova disponível."`
+Estilo: técnico, objetivo, foco em risco jurídico, compliance e estratégia.`
       : `Você é a assistente jurídica da Dra. Thainá Woichaka, especializada em direito civil e do consumidor (PF).
-Estilo: claro, humano, explica termos jurídicos de forma simples.
+Estilo: claro, humano, explica termos jurídicos de forma simples.`;
+
+    const knowledgeInstruction = knowledgeContext 
+      ? `\n\n🔍 IMPORTANTE: Use os documentos da base de conhecimento abaixo como FONTE PRIMÁRIA para suas respostas. Cite o nome do documento quando usar informações dele.${knowledgeContext}`
+      : "";
+
+    const systemPrompt = `${basePrompt}
 
 REGRAS OBRIGATÓRIAS:
 1. SEMPRE cite a fonte oficial (Planalto, LexML, TJPR, CNJ) com link quando aplicável
 2. Se não encontrar fonte confiável, diga explicitamente "não encontrei fonte oficial"
 3. NUNCA invente artigos ou leis
 4. Estrutura de resposta:
-   a) Resumo simples (até 8 linhas)
+   a) Resumo ${mode === "PJ" ? "técnico" : "simples"} (até 8 linhas)
    b) Base legal: artigos/leis com links oficiais
-   c) Riscos do caso (sem alarmismo)
-   d) Checklist prático de documentos/provas
-5. Finalize com: "A análise depende do caso concreto e da prova disponível."`;
+   c) Riscos ${mode === "PJ" ? "e teses contrárias" : "do caso (sem alarmismo)"}
+   d) Checklist prático de ${mode === "PJ" ? "compliance/documentos" : "documentos/provas"}
+   ${mode === "PJ" ? "e) Observações estratégicas (prazo, custo, viabilidade)" : ""}
+5. Finalize com: "A análise depende do caso concreto e da prova disponível."${knowledgeInstruction}`;
 
     const fullMessages = [
       { role: "system", content: systemPrompt },

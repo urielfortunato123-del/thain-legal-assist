@@ -10,14 +10,22 @@ import {
   Trash2,
   Download,
   Loader2,
+  Database,
+  Brain,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import AppLayout from "@/components/AppLayout";
 import { useDocuments, Document } from "@/hooks/useDocuments";
-import { useFolders } from "@/hooks/useFolders";
+import { useFolders, Folder } from "@/hooks/useFolders";
 import { useAuth } from "@/contexts/AuthContext";
 import FolderManager from "@/components/FolderManager";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 function getFileIcon(type: string | null) {
   const t = type?.toUpperCase();
@@ -47,13 +55,25 @@ function formatFileSize(bytes: number | null) {
 
 export default function BibliotecaPage() {
   const [search, setSearch] = useState("");
+  const [selectedFolder, setSelectedFolder] = useState<Folder | null>(null);
+  const [showFolderUpload, setShowFolderUpload] = useState(false);
   const { user } = useAuth();
   const { documents, loading, uploading, uploadDocument, deleteDocument, getDownloadUrl } = useDocuments();
   const { folders, loading: foldersLoading } = useFolders();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const folderFileInputRef = useRef<HTMLInputElement>(null);
 
   const handleUploadClick = () => {
     fileInputRef.current?.click();
+  };
+
+  const handleFolderClick = (folder: Folder) => {
+    setSelectedFolder(folder);
+    setShowFolderUpload(true);
+  };
+
+  const handleFolderUploadClick = () => {
+    folderFileInputRef.current?.click();
   };
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -63,6 +83,18 @@ export default function BibliotecaPage() {
       if (fileInputRef.current) {
         fileInputRef.current.value = "";
       }
+    }
+  };
+
+  const handleFolderFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file && selectedFolder) {
+      const isKnowledgeBase = selectedFolder.name === "Banco de Dados";
+      await uploadDocument(file, selectedFolder.name, isKnowledgeBase);
+      if (folderFileInputRef.current) {
+        folderFileInputRef.current.value = "";
+      }
+      setShowFolderUpload(false);
     }
   };
 
@@ -134,8 +166,58 @@ export default function BibliotecaPage() {
             <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
           </div>
         ) : (
-          <FolderManager folders={folders} documentCounts={documentCounts} />
+          <FolderManager 
+            folders={folders} 
+            documentCounts={documentCounts} 
+            onFolderClick={handleFolderClick}
+          />
         )}
+
+        {/* Folder Upload Dialog */}
+        <Dialog open={showFolderUpload} onOpenChange={setShowFolderUpload}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                {selectedFolder?.name === "Banco de Dados" && (
+                  <Brain className="h-5 w-5 text-primary" />
+                )}
+                Upload para {selectedFolder?.name}
+              </DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              {selectedFolder?.name === "Banco de Dados" && (
+                <div className="bg-primary/10 border border-primary/20 rounded-lg p-3 text-sm">
+                  <p className="font-medium text-primary flex items-center gap-2">
+                    <Database className="h-4 w-4" />
+                    Base de Conhecimento IA
+                  </p>
+                  <p className="text-muted-foreground mt-1">
+                    Documentos enviados aqui serão usados pela IA como fonte de pesquisa nas suas consultas.
+                  </p>
+                </div>
+              )}
+              <input
+                type="file"
+                ref={folderFileInputRef}
+                onChange={handleFolderFileChange}
+                className="hidden"
+                accept=".pdf,.doc,.docx,.txt,.md"
+              />
+              <Button
+                onClick={handleFolderUploadClick}
+                disabled={uploading}
+                className="w-full"
+              >
+                {uploading ? (
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                ) : (
+                  <Upload className="h-4 w-4 mr-2" />
+                )}
+                {uploading ? "Enviando..." : "Selecionar Arquivo"}
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
 
         {/* Recent Documents */}
         <section>
@@ -160,9 +242,15 @@ export default function BibliotecaPage() {
                 >
                   {getFileIcon(doc.file_type)}
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium truncate">{doc.name}</p>
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm font-medium truncate">{doc.name}</p>
+                      {doc.is_knowledge_base && (
+                        <Brain className="h-3.5 w-3.5 text-primary shrink-0" />
+                      )}
+                    </div>
                     <p className="text-xs text-muted-foreground">
                       {new Date(doc.created_at).toLocaleDateString("pt-BR")} · {formatFileSize(doc.file_size)}
+                      {doc.folder && ` · ${doc.folder}`}
                     </p>
                   </div>
                   <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
