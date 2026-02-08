@@ -12,6 +12,7 @@ import {
   Loader2,
   Database,
   Brain,
+  BookOpen,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -20,6 +21,7 @@ import { useDocuments, Document } from "@/hooks/useDocuments";
 import { useFolders, Folder } from "@/hooks/useFolders";
 import { useAuth } from "@/contexts/AuthContext";
 import FolderManager from "@/components/FolderManager";
+import { toast } from "sonner";
 import {
   Dialog,
   DialogContent,
@@ -105,6 +107,49 @@ export default function BibliotecaPage() {
     }
   };
 
+  const [importingVademecum, setImportingVademecum] = useState(false);
+
+  const handleImportVademecum = async () => {
+    if (!user) {
+      toast.error("Faça login primeiro");
+      return;
+    }
+
+    setImportingVademecum(true);
+    toast.info("Importando legislação do Planalto... Isso pode levar alguns segundos.");
+
+    try {
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/import-vademecum`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+          },
+          body: JSON.stringify({ userId: user.id }),
+        }
+      );
+
+      const data = await response.json();
+
+      if (data.success) {
+        const imported = data.results.filter((r: any) => r.status === "success").length;
+        const existing = data.results.filter((r: any) => r.status === "already_exists").length;
+        toast.success(`Vade Mecum importado! ${imported} novos, ${existing} já existiam.`);
+        // Refresh documents
+        window.location.reload();
+      } else {
+        toast.error(data.error || "Erro ao importar");
+      }
+    } catch (error) {
+      console.error("Import error:", error);
+      toast.error("Erro ao importar Vade Mecum");
+    } finally {
+      setImportingVademecum(false);
+    }
+  };
+
   const filteredDocs = documents.filter((doc) =>
     doc.name.toLowerCase().includes(search.toLowerCase())
   );
@@ -121,26 +166,42 @@ export default function BibliotecaPage() {
       <div className="px-4 py-5 space-y-6 max-w-2xl mx-auto">
         <div className="flex items-center justify-between">
           <h1 className="font-serif text-2xl font-bold">Biblioteca</h1>
-          <input
-            type="file"
-            ref={fileInputRef}
-            onChange={handleFileChange}
-            className="hidden"
-            accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.webp,.xls,.xlsx,.txt"
-          />
-          <Button
-            size="sm"
-            onClick={handleUploadClick}
-            disabled={uploading || !user}
-            className="bg-primary text-primary-foreground hover:opacity-90 gap-1.5 text-xs"
-          >
-            {uploading ? (
-              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-            ) : (
-              <Upload className="h-3.5 w-3.5" />
-            )}
-            {uploading ? "Enviando..." : "Upload"}
-          </Button>
+          <div className="flex gap-2">
+            <input
+              type="file"
+              ref={fileInputRef}
+              onChange={handleFileChange}
+              className="hidden"
+              accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.webp,.xls,.xlsx,.txt"
+            />
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={handleImportVademecum}
+              disabled={importingVademecum || !user}
+              className="gap-1.5 text-xs"
+            >
+              {importingVademecum ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <BookOpen className="h-3.5 w-3.5" />
+              )}
+              Vade Mecum
+            </Button>
+            <Button
+              size="sm"
+              onClick={handleUploadClick}
+              disabled={uploading || !user}
+              className="bg-primary text-primary-foreground hover:opacity-90 gap-1.5 text-xs"
+            >
+              {uploading ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Upload className="h-3.5 w-3.5" />
+              )}
+              {uploading ? "Enviando..." : "Upload"}
+            </Button>
+          </div>
         </div>
 
         {!user && (
