@@ -11,6 +11,32 @@ interface ChatMessage {
   content: string;
 }
 
+// Retry with exponential backoff for rate limits
+async function fetchWithRetry(
+  url: string, 
+  options: RequestInit, 
+  maxRetries = 3
+): Promise<Response> {
+  let lastError: Error | null = null;
+  
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    const response = await fetch(url, options);
+    
+    if (response.status === 429) {
+      // Rate limited - wait and retry
+      const waitTime = Math.pow(2, attempt) * 2000; // 2s, 4s, 8s
+      console.log(`Rate limited, waiting ${waitTime}ms before retry ${attempt + 1}/${maxRetries}`);
+      await new Promise(resolve => setTimeout(resolve, waitTime));
+      lastError = new Error("Rate limit exceeded");
+      continue;
+    }
+    
+    return response;
+  }
+  
+  throw lastError || new Error("Max retries exceeded");
+}
+
 // Function to search knowledge base
 async function searchKnowledgeBase(userId: string, query: string): Promise<string> {
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
@@ -113,20 +139,26 @@ REGRAS OBRIGATÓRIAS:
       ...messages.filter(m => m.role === "user" || m.role === "assistant"),
     ];
 
-    const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${OPENROUTER_API_KEY}`,
-        "Content-Type": "application/json",
-        "HTTP-Referer": "https://lovable.dev",
-        "X-Title": "Thainá Jurídico",
-      },
-      body: JSON.stringify({
-        model: "nousresearch/hermes-3-llama-3.1-405b:free",
-        messages: fullMessages,
-        stream,
-      }),
+    const requestBody = JSON.stringify({
+      model: "nousresearch/hermes-3-llama-3.1-405b:free",
+      messages: fullMessages,
+      stream,
     });
+
+    const response = await fetchWithRetry(
+      "https://openrouter.ai/api/v1/chat/completions",
+      {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${OPENROUTER_API_KEY}`,
+          "Content-Type": "application/json",
+          "HTTP-Referer": "https://lovable.dev",
+          "X-Title": "Thainá Jurídico",
+        },
+        body: requestBody,
+      },
+      3
+    );
 
     if (!response.ok) {
       const errorText = await response.text();
@@ -134,7 +166,7 @@ REGRAS OBRIGATÓRIAS:
       
       if (response.status === 429) {
         return new Response(
-          JSON.stringify({ error: "Limite de requisições excedido. Tente novamente em alguns segundos." }),
+          JSON.stringify({ error: "Limite de requisições excedido. Aguarde alguns segundos e tente novamente." }),
           { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
@@ -158,6 +190,15 @@ REGRAS OBRIGATÓRIAS:
   } catch (error) {
     console.error("Chat function error:", error);
     const errorMessage = error instanceof Error ? error.message : "Unknown error";
+    
+    // Handle rate limit from retry exhaustion
+    if (errorMessage.includes("Rate limit")) {
+      return new Response(
+        JSON.stringify({ error: "Limite de requisições excedido após múltiplas tentativas. Aguarde 1 minuto." }),
+        { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    
     return new Response(
       JSON.stringify({ error: errorMessage }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
