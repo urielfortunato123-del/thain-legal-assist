@@ -158,25 +158,25 @@ Como posso ajudar hoje?`,
 
   return (
     <AppLayout>
-      <div className="flex flex-col h-[calc(100vh-8rem)] max-w-2xl mx-auto">
+      <div className="flex flex-col h-[calc(100vh-8rem)] max-w-2xl mx-auto overflow-hidden">
         {/* Header */}
-        <div className="px-4 py-3 border-b border-border flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Sparkles className="h-4 w-4 text-primary" />
-            <h1 className="font-serif text-lg font-semibold">Assistente IA</h1>
+        <div className="px-4 py-3 border-b border-border flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2 min-w-0 flex-1">
+            <Sparkles className="h-4 w-4 text-primary shrink-0" />
+            <h1 className="font-serif text-lg font-semibold truncate">Assistente IA</h1>
             {knowledgeCount > 0 && (
-              <span className="flex items-center gap-1 text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded-full">
+              <span className="flex items-center gap-1 text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded-full shrink-0">
                 <Database className="h-3 w-3" />
-                {knowledgeCount} docs
+                {knowledgeCount}
               </span>
             )}
           </div>
-          <div className="flex bg-secondary rounded-full p-0.5">
+          <div className="flex bg-secondary rounded-full p-0.5 shrink-0">
             {(["PF", "PJ"] as const).map((m) => (
               <button
                 key={m}
                 onClick={() => setMode(m)}
-                className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
+                className={`px-2.5 py-1 rounded-full text-xs font-medium transition-colors ${
                   mode === m ? "bg-primary text-primary-foreground" : "text-muted-foreground"
                 }`}
               >
